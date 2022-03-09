@@ -30,6 +30,7 @@ test = [
 ]
 dev = [
     "mypy>=0.931",
+    "sphinx>=4.4.0",
 ]
 [tool.pdm.scripts]
 tests = "pytest --doctest-modules"

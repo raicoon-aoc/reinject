@@ -54,3 +54,8 @@ within nested coroutines, so that a scope established within
 a coroutine is available in all of its children, but none of
 its siblings. You may use the function `get_current_scope()`
 from any function to retrieve the last pushed scope.
+
+
+# Installation
+
+Copy `reinject.py` into your PYTHONPATH.

@@ -1,7 +1,9 @@
 """
-Resource management for asyncio apps
+Resource management library for asyncio apps.
 
-Usage:
+It allows scoped access to resources, which are
+automatically disposed of when the scope (modelled as a context
+manager) exits::
 
     # 1. handlers which can create and destroy the resources
     # need to be registered:
@@ -69,8 +71,13 @@ def register_resource(
     """Register a resource for later use.
     
 
-    :param Resource: an object implementing the resource protocol.
-    :param autoload_in_scopes: 
+    :param resource: an object implementing the :class:`Resource` protocol.
+    :param autoload_in_scopes: A list of application defined scope names;
+                               when a scope with one of those names is
+                               established using :func:`reinject.resource_scope`,
+                               this resource will automatically be created,
+                               inserted into the scope, and when the scope
+                               exits it will be destroyed.
     """
     _registry[resource.name] = resource
 
@@ -82,6 +89,18 @@ def register_resource(
 
 
 def resource_scope(name: str) -> AsyncContextManager[Scope]:
+    """Establish a resource scope.
+
+    The resource scope is tracked by the async context manager
+    returned from this function.
+
+    .. tip:: Established scopes are asyncio aware. A scope 
+       established within a coroutine is available in all of its 
+       children, but none of its siblings.
+
+    :param name: application defined name for the scope
+
+    """
     try:
         parent_scope: Optional[Scope] = get_current_scope()
     except RuntimeError:
@@ -115,7 +134,7 @@ class Resource(Protocol):
     """A protocol for a managed resource.
     
     It allows to supply resources to reinject which can be properly
-    disposed of when they go out of scope. 
+    disposed of when they go out of scope.
     """
     def managed(self) -> AsyncContextManager[Any]:
         """Return a context manager for this resource.
@@ -131,6 +150,21 @@ class Resource(Protocol):
 
 
 class SetupTeardownResource:
+    """A simple :class:`Resource` implementation wrapping 
+    setup/teardown functions.
+
+    This can be used to register resources if you have
+    a function that can create it, as well as a function
+    that will destroy it::
+
+        async def create_session() -> Session:
+            ...
+
+        async def destroy_session(value: Session) -> None:
+            ...
+
+        SetupTeardownResouce("session", create_session, destroy_session)
+    """
     def __init__(
         self,
         name: str,
@@ -150,7 +184,13 @@ class SetupTeardownResource:
 
 
 class Scope:
-    """Represents a scope containing arbitrary resources."""
+    """Represents a scope containing arbitrary resources.
+    
+    This shouldn't normally be instantiated directly; it is yielded
+    from the context manager returned by :func:`resource_scope`. It
+    provides dict type lookup be resource name, as membership checks
+    for resources using the `in` keyword.
+    """
 
     def __init__(self, name: str, parent: Optional[Scope] = None) -> None:
         self.name = name
@@ -185,8 +225,8 @@ class Scope:
         """Get a named resource from this scope.
 
         If the named resource was never created for this scope
-        (either by registering with autoload_in_scope, or by calling
-        ensure_resource() before this function), then this will
+        (either by registering with `autoload_in_scope`, or by calling
+        :func:`ensure_resource` before this function), then this will
         raise a KeyError.
         """
         if name in self.own_resources:
@@ -207,14 +247,23 @@ class Scope:
         return f"Scope({repr(self.name)})"
 
     async def add_resource(self, resource: Resource) -> Any:
-        """Add a resource to this scope instance only, without registering it."""
+        """Add a resource to this scope instance only, without registering it.
+        
+        This is a 1-time resource that will not be registered, and it will
+        be removed as soon as the scope expires.
+        """
         self.own_resources[resource.name] = await self.exitstack.enter_async_context(
             resource.managed()
         )
         return self.own_resources[resource.name]
 
     async def ensure_resource(self, name: str) -> Any:
-        """Make sure that a previously registered resource is available in this scope."""
+        """Make sure that a previously registered resource is 
+        available in this scope.
+        
+        This is useful for resources which were not autoloaded into
+        the scope.
+        """
         try:
             return self[name]
         except LookupError:
