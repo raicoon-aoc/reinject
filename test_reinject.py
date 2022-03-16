@@ -17,6 +17,7 @@ from reinject import (
     resource_scope,
 )
 
+
 class TrackedResource:
     name = "tracked"
 
@@ -131,16 +132,20 @@ async def test_loading_resource_from_nested_scopes(
 
 
 @pytest.mark.asyncio
-async def test_ensure_resource_doesnt_recreate_resource_already_present_in_parent_scope(
+async def test_ensure_resource_doesnt_recreate_resource_already_present_in_parent_scope(  # noqa
     resource_name: str,
 ) -> None:
     async with resource_scope("outer") as outer_scope:
         await outer_scope.ensure_resource(resource_name)
-        outer_resource = await extract_resource_from_current_scope(resource_name)
+        outer_resource = await extract_resource_from_current_scope(
+            resource_name
+        )
 
         async with resource_scope("inner") as inner_scope:
             await inner_scope.ensure_resource(resource_name)
-            inner_resource = await extract_resource_from_current_scope(resource_name)
+            inner_resource = await extract_resource_from_current_scope(
+                resource_name
+            )
 
             assert inner_resource is outer_resource
 
@@ -160,20 +165,22 @@ async def test_resource_shared_across_coroutines_in_same_scope(
 
 
 @pytest.mark.asyncio
-async def test_extract_unregistered_resource(mocker: MockerFixture) -> None:    
+async def test_extract_unregistered_resource(mocker: MockerFixture) -> None:
     class ClientSessionResource:
         name = "aiohttp_session"
 
         @classmethod
-        def managed(cls) :
-            return ClientSession() # ClientSession is a context manager
+        def managed(cls) -> ClientSession:
+            return ClientSession()  # ClientSession is a context manager
 
     ClientSession_close = mocker.spy(ClientSession, "close")
 
     async with resource_scope(APP_SCOPE) as scope:
         await scope.add_resource(ClientSessionResource)  # type: ignore
 
-        root_pub = await extract_resource_from_current_scope(ClientSessionResource.name)
+        root_pub = await extract_resource_from_current_scope(
+            ClientSessionResource.name
+        )
         nested_coro_pub = await extract_resource_from_current_scope(
             ClientSessionResource.name, nested_levels=10
         )
