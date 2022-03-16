@@ -8,5 +8,5 @@ build:
 sphinx:
   configuration: docs/conf.py
 
-format:
+formats:
   - pdf

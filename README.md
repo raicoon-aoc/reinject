@@ -1,11 +1,13 @@
-reinject
-========
+# reinject
+
+[![Documentation Status](https://readthedocs.org/projects/reinject/badge/?version=latest)](https://reinject.readthedocs.io/en/latest/?badge=latest)
 
 `reinject` is a **re**source **inject**or for Python 3.9+ asyncio
 applications. It allows scoped access to resources, which are
 automatically disposed of when the scope (modelled as a context
 manager) exits:
 
+## Usage
 
 ```python
 from reinject import register_resource, resource_scope, get_current_scope
@@ -55,7 +57,10 @@ a coroutine is available in all of its children, but none of
 its siblings. You may use the function `get_current_scope()`
 from any function to retrieve the last pushed scope.
 
+## Documentation
 
-# Installation
+Full documentation can be view at [https://reinject.readthedocs.io](https://reinject.readthedocs.io/en/latest/).
+
+##  Installation
 
 Copy `reinject.py` into your PYTHONPATH.
